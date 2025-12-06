@@ -99,3 +99,13 @@ app.post("/gpt", async (req, res) => {
 app.listen(3000, () => {
   console.log("🚀 Servidor iniciado en puerto 3000");
 });
+app.post("/callback", (req, res) => {
+  const { ticket_id, response } = req.body;
+
+  console.log("📨 Recibido callback de Zendesk:");
+  console.log("Ticket:", ticket_id);
+  console.log("Respuesta:", response);
+
+  res.send({ status: "ok" });
+});
+
