@@ -1,111 +1,57 @@
 import express from "express";
-import bodyParser from "body-parser";
 import axios from "axios";
-import OpenAI from "openai";
+import bodyParser from "body-parser";
 
 const app = express();
 app.use(bodyParser.json());
 
-// -----------------------------
-// CONFIG OPENAI
-// -----------------------------
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Tu API Key de Zendesk (⚠️ usa un token de API)
+const ZENDESK_EMAIL = "soporte@autoazur.com"; 
+const ZENDESK_API_TOKEN = "AQUI_TU_TOKEN_DE_API";
+const ZENDESK_DOMAIN = "autoazur.zendesk.com";
 
-// -----------------------------
-// FUNCIÓN: ENVIAR RESPUESTA A ZENDESK
-// -----------------------------
-async function addCommentToZendesk(ticketId, text) {
-  const zendeskEmail = "TU_CORREO_DE_ZENDESK/token";   // ← CAMBIAR
-  const zendeskToken = "TU_API_TOKEN";                 // ← CAMBIAR
+// ---------------------------------------------------------------------------
+// 🔵 1. ENDPOINT PRINCIPAL: Zendesk envía "prompt" y "ticket_id"
+// ---------------------------------------------------------------------------
+app.post("/gpt", async (req, res) => {
+  const { prompt, ticket_id } = req.body;
 
-  const url = `https://soporteazil.zendesk.com/api/v2/tickets/${ticketId}.json`;
+  console.log("📩 Webhook recibido:", req.body);
 
-  console.log("🟦 Enviando comentario a Zendesk:", ticketId);
+  if (!prompt || !ticket_id) {
+    console.log("❌ Faltan campos");
+    return res.status(400).json({ error: "Faltan campos" });
+  }
 
   try {
-    await axios.put(
-      url,
+    // -----------------------------------------------------------------------
+    // 🔵 2. Llamada al modelo GPT (usa el modelo que prefieras)
+    // -----------------------------------------------------------------------
+    const completion = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
       {
-        ticket: {
-          comment: {
-            body: text,
-            public: false   // Nota interna
-          }
-        }
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "Eres agente de soporte de AutoAzur." },
+          { role: "user", content: prompt }
+        ]
       },
       {
-        auth: {
-          username: zendeskEmail,
-          password: zendeskToken
-        },
         headers: {
-          "Content-Type": "application/json"
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
         }
       }
     );
 
-    console.log("✅ Comentario agregado correctamente a Zendesk");
-  } catch (err) {
-    console.error("❌ Error enviando comentario a Zendesk:", err.response?.data || err.message);
-  }
-}
+    const respuesta = completion.data.choices[0].message.content;
+    console.log("🤖 Respuesta generada:", respuesta);
 
-// -----------------------------
-// ENDPOINT /gpt — RECIBE EL WEBHOOK DE ZENDESK
-// -----------------------------
-app.post("/gpt", async (req, res) => {
-  try {
-    console.log("📩 Webhook recibido en /gpt con body:", req.body);
-
-    const { prompt, ticket_id } = req.body;
-
-    if (!prompt || !ticket_id) {
-      console.log("❌ Faltan campos en el body");
-      return res.status(400).json({ error: "Faltan campos" });
-    }
-
-    // -----------------------------
-    // 1. CONSULTAR OPENAI ASSISTANT
-    // -----------------------------
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ]
-    });
-
-    const reply = response.choices[0].message.content;
-
-    console.log("🤖 Respuesta del assistant:", reply);
-
-    // -----------------------------
-    // 2. AGREGAR LA RESPUESTA AL TICKET
-    // -----------------------------
-    await addCommentToZendesk(ticket_id, reply);
-
-    return res.json({ reply });
-  } catch (err) {
-    console.error("🔥 Error procesando /gpt:", err);
-    return res.status(500).json({ error: "No se pudo completar la operación" });
-  }
-});
-
-// -----------------------------
-app.listen(3000, () => {
-  console.log("🚀 Servidor iniciado en puerto 3000");
-});
-app.post("/callback", (req, res) => {
-  const { ticket_id, response } = req.body;
-
-  console.log("📨 Recibido callback de Zendesk:");
-  console.log("Ticket:", ticket_id);
-  console.log("Respuesta:", response);
-
-  res.send({ status: "ok" });
-});
-
+    // -----------------------------------------------------------------------
+    // 🔵 3. PUBLICAR LA RESPUESTA EN ZENDESK COMO COMENTARIO PÚBLICO
+    // -----------------------------------------------------------------------
+    const zendeskResponse = await axios.post(
+      `https://${ZENDESK_DOMAIN}/api/v2/tickets/${ticket_id}.json`,
+      {
+        ticket: {
+          comment: {
