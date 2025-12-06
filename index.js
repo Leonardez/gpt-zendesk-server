@@ -48,28 +48,27 @@ app.post("/gpt", async (req, res) => {
     console.log("🤖 Respuesta generada:", respuesta);
 
     // ---------------------------------------------------------
-    // 🔵 3. Publicar comentario PÚBLICO en el ticket de Zendesk
-    // ---------------------------------------------------------
-    await axios.post(
-      `https://${ZENDESK_DOMAIN}/api/v2/tickets/${ticket_id}.json`,
-      {
-        ticket: {
-          comment: {
-            body: respuesta,
-            public: true
-          }
-        }
-      },
-      {
-        auth: {
-          username: `${ZENDESK_EMAIL}/token`,
-          password: ZENDESK_API_TOKEN
-        },
-        headers: {
-          "Content-Type": "application/json"
-        }
+//----------------------------------------------------
+// 3. AGREGAR COMENTARIO AL TICKET DE ZENDESK
+//----------------------------------------------------
+await axios.put(
+  `https://${ZENDESK_DOMAIN}/api/v2/tickets/${ticket_id}.json`,
+  {
+    ticket: {
+      comment: {
+        body: respuesta,
+        public: false
       }
-    );
+    }
+  },
+  {
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Basic ${Buffer.from(`${ZENDESK_EMAIL}/token:${ZENDESK_API_TOKEN}`).toString("base64")}`
+    }
+  }
+);
+
 
     console.log("🟩 Comentario agregado en Zendesk");
 
