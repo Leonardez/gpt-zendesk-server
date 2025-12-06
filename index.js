@@ -7,7 +7,7 @@ app.use(express.json());
 app.use(cors());
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 const ASSISTANT_ID = "asst_l7votvQKYhR4ONOmtVvNSWT8";
