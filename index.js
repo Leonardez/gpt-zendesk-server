@@ -7,8 +7,8 @@ app.use(bodyParser.json());
 
 // 👉 CONFIGURA TU ZENDESK
 const ZENDESK_EMAIL = "soporte@autoazur.com";
-const ZENDESK_API_TOKEN = "oqbNYee9mHAHcBLzw3hkTDe3jRbOdw6wzd2FhpXB";
-const ZENDESK_DOMAIN = "soporteazil.zendesk.com";
+const ZENDESK_API_TOKEN = "hMlvIaWx0M6Z0Zkgb0zfNRgv9qzg5zhrDnhTMhmc";  // 🔥 Nuevo token correcto
+const ZENDESK_DOMAIN = "soporteazil.zendesk.com"; // 🔥 Dominio validado
 
 // -------------------------------------------------------------
 // 🔵 1. Endpoint que recibe Webhook desde Zendesk
@@ -19,13 +19,13 @@ app.post("/gpt", async (req, res) => {
   console.log("📩 Webhook recibido:", req.body);
 
   if (!prompt || !ticket_id) {
-    console.log("❌ Faltan campos");
+    console.log("❌ Faltan campos en webhook");
     return res.status(400).json({ error: "Faltan campos" });
   }
 
   try {
     // ---------------------------------------------------------
-    // 🔵 2. Llamada a GPT
+    // 🔵 2. Llamada al modelo GPT
     // ---------------------------------------------------------
     const completion = await axios.post(
       "https://api.openai.com/v1/chat/completions",
@@ -45,37 +45,37 @@ app.post("/gpt", async (req, res) => {
     );
 
     const respuesta = completion.data.choices[0].message.content;
-    console.log("🤖 Respuesta generada:", respuesta);
+    console.log("🤖 Respuesta generada por GPT:", respuesta);
 
     // ---------------------------------------------------------
-//----------------------------------------------------
-// 3. AGREGAR COMENTARIO AL TICKET DE ZENDESK
-//----------------------------------------------------
-await axios.put(
-  `https://${ZENDESK_DOMAIN}/api/v2/tickets/${ticket_id}.json`,
-  {
-    ticket: {
-      comment: {
-        body: respuesta,
-        public: false
+    // 🔵 3. Agregar comentario público al ticket en Zendesk
+    // ---------------------------------------------------------
+    const zendeskResponse = await axios.put(
+      `https://${ZENDESK_DOMAIN}/api/v2/tickets/${ticket_id}.json`,
+      {
+        ticket: {
+          comment: {
+            body: respuesta,
+            public: true  // 🔥 Comentario PUBLICO
+          }
+        }
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Basic ${Buffer.from(
+            `${ZENDESK_EMAIL}/token:${ZENDESK_API_TOKEN}`
+          ).toString("base64")}`
+        }
       }
-    }
-  },
-  {
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Basic ${Buffer.from(`${ZENDESK_EMAIL}/token:${ZENDESK_API_TOKEN}`).toString("base64")}`
-    }
-  }
-);
+    );
 
+    console.log("🟩 Comentario agregado correctamente en Zendesk:", zendeskResponse.data);
 
-    console.log("🟩 Comentario agregado en Zendesk");
-
-    return res.json({ status: "ok", message: "Comentario publicado" });
+    return res.json({ status: "ok", message: "Comentario publicado correctamente" });
 
   } catch (error) {
-    console.error("🔥 Error en el proceso:", error.response?.data || error);
+    console.error("🔥 Error en el proceso GPT → Zendesk:", error.response?.data || error);
     return res.status(500).json({ error: "Error interno" });
   }
 });
