@@ -56,7 +56,7 @@ app.post("/gpt", async (req, res) => {
         ticket: {
           comment: {
             body: respuesta,
-            public: true  // 🔥 Comentario PUBLICO
+            public: false  // 🔥 Comentario PUBLICO
           }
         }
       },
