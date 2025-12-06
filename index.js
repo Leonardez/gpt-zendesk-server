@@ -8,7 +8,7 @@ app.use(bodyParser.json());
 // 👉 CONFIGURA TU ZENDESK
 const ZENDESK_EMAIL = "soporte@autoazur.com";
 const ZENDESK_API_TOKEN = "oqbNYee9mHAHcBLzw3hkTDe3jRbOdw6wzd2FhpXB";
-const ZENDESK_DOMAIN = "soporteazil";
+const ZENDESK_DOMAIN = "soporteazil.zendesk.com";
 
 // -------------------------------------------------------------
 // 🔵 1. Endpoint que recibe Webhook desde Zendesk
