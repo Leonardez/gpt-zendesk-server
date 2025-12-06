@@ -5,14 +5,14 @@ import bodyParser from "body-parser";
 const app = express();
 app.use(bodyParser.json());
 
-// Tu API Key de Zendesk (⚠️ usa un token de API)
-const ZENDESK_EMAIL = "soporte@autoazur.com"; 
+// 👉 CONFIGURA TU ZENDESK
+const ZENDESK_EMAIL = "soporte@autoazur.com";
 const ZENDESK_API_TOKEN = "AQUI_TU_TOKEN_DE_API";
 const ZENDESK_DOMAIN = "autoazur.zendesk.com";
 
-// ---------------------------------------------------------------------------
-// 🔵 1. ENDPOINT PRINCIPAL: Zendesk envía "prompt" y "ticket_id"
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------
+// 🔵 1. Endpoint que recibe Webhook desde Zendesk
+// -------------------------------------------------------------
 app.post("/gpt", async (req, res) => {
   const { prompt, ticket_id } = req.body;
 
@@ -24,9 +24,9 @@ app.post("/gpt", async (req, res) => {
   }
 
   try {
-    // -----------------------------------------------------------------------
-    // 🔵 2. Llamada al modelo GPT (usa el modelo que prefieras)
-    // -----------------------------------------------------------------------
+    // ---------------------------------------------------------
+    // 🔵 2. Llamada a GPT
+    // ---------------------------------------------------------
     const completion = await axios.post(
       "https://api.openai.com/v1/chat/completions",
       {
@@ -39,7 +39,7 @@ app.post("/gpt", async (req, res) => {
       {
         headers: {
           Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         }
       }
     );
@@ -47,11 +47,41 @@ app.post("/gpt", async (req, res) => {
     const respuesta = completion.data.choices[0].message.content;
     console.log("🤖 Respuesta generada:", respuesta);
 
-    // -----------------------------------------------------------------------
-    // 🔵 3. PUBLICAR LA RESPUESTA EN ZENDESK COMO COMENTARIO PÚBLICO
-    // -----------------------------------------------------------------------
-    const zendeskResponse = await axios.post(
+    // ---------------------------------------------------------
+    // 🔵 3. Publicar comentario PÚBLICO en el ticket de Zendesk
+    // ---------------------------------------------------------
+    await axios.post(
       `https://${ZENDESK_DOMAIN}/api/v2/tickets/${ticket_id}.json`,
       {
         ticket: {
           comment: {
+            body: respuesta,
+            public: true
+          }
+        }
+      },
+      {
+        auth: {
+          username: `${ZENDESK_EMAIL}/token`,
+          password: ZENDESK_API_TOKEN
+        },
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    console.log("🟩 Comentario agregado en Zendesk");
+
+    return res.json({ status: "ok", message: "Comentario publicado" });
+
+  } catch (error) {
+    console.error("🔥 Error en el proceso:", error.response?.data || error);
+    return res.status(500).json({ error: "Error interno" });
+  }
+});
+
+// -------------------------------------------------------------
+app.listen(3000, () =>
+  console.log("🚀 Servidor iniciado en puerto 3000")
+);
